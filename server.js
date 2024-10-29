@@ -75,7 +75,7 @@ app.get('/api/trade-history', async (req, res) => {
   try {
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: '1epn4JWYAz8o73-KkzbdaKCxxyUNh7hxQuQbyjmQH1Sw',
-      range: 'Trade-History!A2:F',
+      range: 'Trade-History!A2:E',
     });
 
     if (!response.data.values || response.data.values.length === 0) {
@@ -83,12 +83,10 @@ app.get('/api/trade-history', async (req, res) => {
     }
 
     const tradeHistory = response.data.values.map(row => ({
-      date: row[0],
-      name: row[1],
-      tradeType: row[2],
-      pnl: row[3],
-      open: row[4],
-      close: row[5]
+      date: row[1],
+      name: row[2],
+      tradeType: row[3],
+      pnl: row[4],
     })).reverse();
 
     res.json(tradeHistory);
@@ -156,7 +154,7 @@ app.get('/api/pnl-data', async (req, res) => {
     const sheetName = req.query.sheet || 'Trade-History';
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: '1epn4JWYAz8o73-KkzbdaKCxxyUNh7hxQuQbyjmQH1Sw',
-      range: `${sheetName}!A2:D`,
+      range: `${sheetName}!A2:E`,
     });
 
     if (!response.data.values) {
@@ -164,8 +162,8 @@ app.get('/api/pnl-data', async (req, res) => {
     }
 
     const pnlData = response.data.values.map(row => ({
-      date: row[0],
-      pnl: row[3] ? parseFloat(row[3]) : null
+      date: row[1],
+      pnl: row[4] ? parseFloat(row[4]) : null
     }));
 
     res.json(pnlData);

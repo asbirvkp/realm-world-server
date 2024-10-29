@@ -11,7 +11,8 @@ app.use(cors({
   origin: ['https://slateblue-hummingbird-423694.hostingersite.com', 'http://localhost:3000'],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true
+  credentials: true,
+  exposedHeaders: ['Authorization']
 }));
 
 app.use(express.json());
@@ -43,7 +44,7 @@ const authenticateToken = (req, res, next) => {
 };
 
 // Performance data endpoint
-app.get('/api/performance-data', async (req, res) => {
+app.get('/api/performance-data', authenticateToken, async (req, res) => {
   try {
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: '1epn4JWYAz8o73-KkzbdaKCxxyUNh7hxQuQbyjmQH1Sw',
@@ -189,6 +190,11 @@ app.use((err, req, res, next) => {
 // Handle 404
 app.use((req, res) => {
   res.status(404).json({ error: 'Route not found' });
+});
+
+// Add this route at the end before app.listen
+app.get('/test', (req, res) => {
+  res.json({ message: 'Server is running and accessible!' });
 });
 
 // Start the server

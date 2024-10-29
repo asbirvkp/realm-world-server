@@ -8,9 +8,10 @@ const app = express();
 
 // CORS configuration
 app.use(cors({
-  origin: '*',  // Allow all origins for now
+  origin: ['https://slateblue-hummingbird-423694.hostingersite.com', 'http://localhost:3000'],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
 }));
 
 app.use(express.json());

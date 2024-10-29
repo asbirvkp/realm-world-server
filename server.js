@@ -30,12 +30,16 @@ const authenticateToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
 
+  console.log('Auth Header:', authHeader);
+  console.log('Token:', token);
+
   if (!token) {
     return res.status(401).json({ error: 'No token provided' });
   }
 
   jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key', (err, user) => {
     if (err) {
+      console.error('Token verification error:', err);
       return res.status(403).json({ error: 'Invalid token' });
     }
     req.user = user;
@@ -73,7 +77,7 @@ app.get('/api/performance-data', authenticateToken, async (req, res) => {
 });
 
 // Trade history endpoint
-app.get('/api/trade-history', async (req, res) => {
+app.get('/api/trade-history', authenticateToken, async (req, res) => {
   try {
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: '1epn4JWYAz8o73-KkzbdaKCxxyUNh7hxQuQbyjmQH1Sw',
@@ -110,33 +114,32 @@ const users = [
 app.post('/api/login', (req, res) => {
   try {
     const { email, password } = req.body;
-    console.log('Login attempt:', { email, password }); // Debug log
     
-    // Find user
-    const user = users.find(u => u.email === email && u.password === password);
+    // For testing purposes, hardcode a user
+    const validUser = {
+      email: 'asb@gmail.com',
+      password: '123'
+    };
     
-    if (!user) {
-      console.log('Invalid credentials'); // Debug log
-      return res.status(401).json({ 
-        success: false, 
-        error: 'Invalid credentials' 
+    if (email === validUser.email && password === validUser.password) {
+      const token = jwt.sign(
+        { email: validUser.email },
+        process.env.JWT_SECRET || 'your-secret-key',
+        { expiresIn: '24h' }
+      );
+      
+      return res.json({
+        success: true,
+        token,
+        message: 'Login successful'
       });
     }
-
-    // Generate JWT token
-    const token = jwt.sign(
-      { email: user.email },
-      process.env.JWT_SECRET || 'your-secret-key',
-      { expiresIn: '24h' }
-    );
-
-    console.log('Login successful'); // Debug log
-    res.json({
-      success: true,
-      token,
-      message: 'Login successful'
+    
+    return res.status(401).json({
+      success: false,
+      error: 'Invalid credentials'
     });
-
+    
   } catch (error) {
     console.error('Login error:', error);
     res.status(500).json({ 
@@ -151,7 +154,7 @@ app.get('/', (req, res) => {
   res.json({ message: 'Server is running!' });
 });
 
-app.get('/api/pnl-data', async (req, res) => {
+app.get('/api/pnl-data', authenticateToken, async (req, res) => {
   try {
     const sheetName = req.query.sheet || 'Trade-History';
     const response = await sheets.spreadsheets.values.get({

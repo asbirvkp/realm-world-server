@@ -52,21 +52,37 @@ app.get('/api/performance-data', authenticateToken, async (req, res) => {
   try {
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: '1epn4JWYAz8o73-KkzbdaKCxxyUNh7hxQuQbyjmQH1Sw',
-      range: 'Trade-History!G1:N1',
+      range: 'Trade-History!H1:N1',
     });
 
     const rows = response.data.values;
-    if (!rows || rows.length < 2) {
+    if (!rows || rows.length === 0) {
       return res.status(404).json({ 
         error: 'No data found in spreadsheet'
       });
     }
 
     const formattedData = [
-      { title: 'This Week PNL', value: rows[0][7], change: rows[0][7] },
-      { title: 'Last Week PNL', value: rows[0][9], change: rows[0][9] },
-      { title: 'Monthly PNL', value: rows[0][11], change: rows[0][11] },
-      { title: 'Yearly PNL', value: rows[0][13], change: rows[0][13] }
+      { 
+        title: 'This Week PNL', 
+        value: rows[0][0] || '0',  // H1
+        change: 'Current Week Performance'
+      },
+      { 
+        title: 'Last Week PNL', 
+        value: rows[0][2] || '0',  // J1
+        change: 'Previous Week Performance'
+      },
+      { 
+        title: 'Monthly PNL', 
+        value: rows[0][4] || '0',  // L1
+        change: 'This Month Performance'
+      },
+      { 
+        title: 'Yearly PNL', 
+        value: rows[0][6] || '0',  // N1
+        change: 'This Year Performance'
+      }
     ];
 
     res.json(formattedData);

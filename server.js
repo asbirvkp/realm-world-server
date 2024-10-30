@@ -50,13 +50,22 @@ const authenticateToken = (req, res, next) => {
 // Performance data endpoint
 app.get('/api/performance-data', authenticateToken, async (req, res) => {
   try {
-    const response = await sheets.spreadsheets.values.get({
-      spreadsheetId: '1epn4JWYAz8o73-KkzbdaKCxxyUNh7hxQuQbyjmQH1Sw',
-      range: 'Trade-History!H1:N1',
-    });
+    // Fetch both rows (H1:N1 and G2:M2)
+    const [valueResponse, changeResponse] = await Promise.all([
+      sheets.spreadsheets.values.get({
+        spreadsheetId: '1epn4JWYAz8o73-KkzbdaKCxxyUNh7hxQuQbyjmQH1Sw',
+        range: 'Trade-History!H1:N1',
+      }),
+      sheets.spreadsheets.values.get({
+        spreadsheetId: '1epn4JWYAz8o73-KkzbdaKCxxyUNh7hxQuQbyjmQH1Sw',
+        range: 'Trade-History!G2:M2',
+      })
+    ]);
 
-    const rows = response.data.values;
-    if (!rows || rows.length === 0) {
+    const valueRows = valueResponse.data.values;
+    const changeRows = changeResponse.data.values;
+
+    if (!valueRows || !changeRows || valueRows.length === 0 || changeRows.length === 0) {
       return res.status(404).json({ 
         error: 'No data found in spreadsheet'
       });
@@ -65,23 +74,23 @@ app.get('/api/performance-data', authenticateToken, async (req, res) => {
     const formattedData = [
       { 
         title: 'This Week PNL', 
-        value: rows[0][0] || '0',  // H1
-        change: 'Current Week Performance'
+        value: valueRows[0][0] || '0',  // H1
+        change: changeRows[0][0] || '0'  // G2
       },
       { 
         title: 'Last Week PNL', 
-        value: rows[0][2] || '0',  // J1
-        change: 'Previous Week Performance'
+        value: valueRows[0][2] || '0',  // J1
+        change: changeRows[0][2] || '0'  // I2
       },
       { 
         title: 'Monthly PNL', 
-        value: rows[0][4] || '0',  // L1
-        change: 'This Month Performance'
+        value: valueRows[0][4] || '0',  // L1
+        change: changeRows[0][4] || '0'  // K2
       },
       { 
         title: 'Yearly PNL', 
-        value: rows[0][6] || '0',  // N1
-        change: 'This Year Performance'
+        value: valueRows[0][6] || '0',  // N1
+        change: changeRows[0][6] || '0'  // M2
       }
     ];
 

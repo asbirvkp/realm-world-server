@@ -52,7 +52,7 @@ app.get('/api/performance-data', authenticateToken, async (req, res) => {
   try {
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: '1epn4JWYAz8o73-KkzbdaKCxxyUNh7hxQuQbyjmQH1Sw',
-      range: 'Performance-Overview!B2:E3',
+      range: 'Trade-History!G1:N1',
     });
 
     const rows = response.data.values;
@@ -63,10 +63,10 @@ app.get('/api/performance-data', authenticateToken, async (req, res) => {
     }
 
     const formattedData = [
-      { title: 'This Week PNL', value: rows[1][0], change: rows[0][0] },
-      { title: 'Last Week PNL', value: rows[1][1], change: rows[0][1] },
-      { title: 'Monthly PNL', value: rows[1][2], change: rows[0][2] },
-      { title: 'Yearly PNL', value: rows[1][3], change: rows[0][3] }
+      { title: 'This Week PNL', value: rows[0][7], change: rows[0][7] },
+      { title: 'Last Week PNL', value: rows[0][9], change: rows[0][9] },
+      { title: 'Monthly PNL', value: rows[0][11], change: rows[0][11] },
+      { title: 'Yearly PNL', value: rows[0][13], change: rows[0][13] }
     ];
 
     res.json(formattedData);

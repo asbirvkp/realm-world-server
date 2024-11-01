@@ -100,25 +100,28 @@ app.get('/api/test-sheets', authenticateToken, async (req, res) => {
 // Performance data endpoint
 app.get('/api/performance-data', authenticateToken, async (req, res) => {
   try {
-    const [valueResponse, changeResponse] = await Promise.all([
-      sheets.spreadsheets.values.get({
-        spreadsheetId,
-        range: 'Trade-History!H1:N1',
-      }),
-      sheets.spreadsheets.values.get({
-        spreadsheetId,
-        range: 'Trade-History!G2:M2',
-      })
-    ]);
-    
-    if (!valueResponse.data.values || !changeResponse.data.values) {
-      return res.status(404).json({ error: 'No data found in spreadsheet' });
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: 'Trade-History!H1:N1',
+    });
+
+    if (!response.data.values || !response.data.values[0]) {
+      return res.json({
+        thisWeek: '0',
+        lastWeek: '0',
+        monthly: '0',
+        yearly: '0'
+      });
     }
 
+    const values = response.data.values[0];
     res.json({
-      values: valueResponse.data.values[0],
-      changes: changeResponse.data.values[0]
+      thisWeek: values[0] || '0',
+      lastWeek: values[2] || '0',
+      monthly: values[3] || '0',
+      yearly: values[6] || '0'
     });
+
   } catch (error) {
     console.error('Performance Data Error:', error);
     res.status(500).json({ error: 'Failed to fetch performance data' });

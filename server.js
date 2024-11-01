@@ -130,7 +130,7 @@ app.get('/api/trade-history', authenticateToken, async (req, res) => {
   try {
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: 'Form_Responses1!B2:E',
+      range: 'Form_Responses1!A2:F',
     });
 
     if (!response.data.values) {
@@ -139,12 +139,12 @@ app.get('/api/trade-history', authenticateToken, async (req, res) => {
 
     const trades = response.data.values
       .map(row => ({
-        date: row[0],
-        symbol: row[1],
-        direction: row[2] ? row[2].toUpperCase() : 'BUY',
-        pnl: parseFloat(row[3] || 0)
+        timestamp: row[1],
+        symbol: row[2],
+        direction: row[3],
+        pnl: parseFloat(row[4] || 0)
       }))
-      .filter(trade => trade.date && trade.symbol && trade.direction)
+      .filter(trade => trade.timestamp && trade.symbol && trade.direction)
       .reverse();
 
     res.json(trades);

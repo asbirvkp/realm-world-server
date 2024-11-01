@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
 const { google } = require('googleapis');
+const admin = require('firebase-admin');
 require('dotenv').config();
 
 const app = express();
@@ -24,6 +25,15 @@ const auth = new google.auth.GoogleAuth({
 });
 
 const sheets = google.sheets({ version: 'v4', auth });
+
+// Initialize Firebase Admin
+admin.initializeApp({
+  credential: admin.credential.cert({
+    projectId: process.env.FIREBASE_PROJECT_ID,
+    clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+    privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+  }),
+});
 
 // Add authentication middleware
 const authenticateToken = (req, res, next) => {
@@ -198,6 +208,28 @@ app.use((req, res) => {
 // Add this route at the end before app.listen
 app.get('/test', (req, res) => {
   res.json({ message: 'Server is running and accessible!' });
+});
+
+// Add this new endpoint
+app.post('/api/auth/firebase', async (req, res) => {
+  try {
+    const { firebaseToken } = req.body;
+    
+    // Verify the Firebase token
+    const decodedToken = await admin.auth().verifyIdToken(firebaseToken);
+    
+    // Create your custom JWT token
+    const token = jwt.sign(
+      { uid: decodedToken.uid, email: decodedToken.email },
+      process.env.JWT_SECRET || 'your-secret-key',
+      { expiresIn: '24h' }
+    );
+    
+    res.json({ token });
+  } catch (error) {
+    console.error('Firebase auth error:', error);
+    res.status(401).json({ error: 'Authentication failed' });
+  }
 });
 
 // Start the server

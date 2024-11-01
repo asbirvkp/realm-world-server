@@ -92,32 +92,36 @@ app.get('/api/performance-data', authenticateToken, async (req, res) => {
     const responses = await Promise.all([
       sheets.spreadsheets.values.get({
         spreadsheetId,
-        range: 'Trade-History!H1', // This Week
+        range: 'Trade-History!H2',
       }),
       sheets.spreadsheets.values.get({
         spreadsheetId,
-        range: 'Trade-History!J1', // Last Week
+        range: 'Trade-History!J2',
       }),
       sheets.spreadsheets.values.get({
         spreadsheetId,
-        range: 'Trade-History!L1', // Monthly PNL
+        range: 'Trade-History!L2',
       }),
       sheets.spreadsheets.values.get({
         spreadsheetId,
-        range: 'Trade-History!N1', // Yearly PNL
+        range: 'Trade-History!N2',
       })
     ]);
 
     const getValue = (response) => {
-      if (response.data.values && response.data.values[0] && response.data.values[0][0]) {
-        const value = parseFloat(response.data.values[0][0]);
-        return isNaN(value) ? '0' : value.toString();
+      try {
+        if (response.data.values && response.data.values[0] && response.data.values[0][0]) {
+          const value = parseFloat(response.data.values[0][0]);
+          return isNaN(value) ? '0' : value.toFixed(2);
+        }
+        return '0';
+      } catch (error) {
+        console.error('Error parsing value:', error);
+        return '0';
       }
-      return '0';
     };
 
     const [thisWeek, lastWeek, monthly, yearly] = responses.map(getValue);
-
     console.log('Performance Data:', { thisWeek, lastWeek, monthly, yearly });
 
     res.json({
@@ -126,7 +130,6 @@ app.get('/api/performance-data', authenticateToken, async (req, res) => {
       monthly,
       yearly
     });
-
   } catch (error) {
     console.error('Performance Data Error:', error);
     res.status(500).json({ error: 'Failed to fetch performance data' });
@@ -189,6 +192,12 @@ app.get('/api/pnl-data', authenticateToken, async (req, res) => {
     console.error('PNL Data Error:', error);
     res.status(500).json({ error: 'Failed to fetch PNL data' });
   }
+});
+
+// Add this error handling middleware at the end before app.listen
+app.use((err, req, res, next) => {
+  console.error('Global error:', err);
+  res.status(500).json({ error: 'Internal Server Error' });
 });
 
 const PORT = process.env.PORT || 3000;

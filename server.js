@@ -87,26 +87,19 @@ app.get('/api/performance-data', authenticateToken, async (req, res) => {
 // Trade history endpoint
 app.get('/api/trade-history', authenticateToken, async (req, res) => {
   try {
+    const spreadsheetId = process.env.GOOGLE_SHEETS_ID;
+    const range = 'Sheet1!A:Z'; // Adjust based on your sheet's range
+
     const response = await sheets.spreadsheets.values.get({
-      spreadsheetId: '1epn4JWYAz8o73-KkzbdaKCxxyUNh7hxQuQbyjmQH1Sw',
-      range: 'Trade-History!A2:E',
+      spreadsheetId,
+      range,
     });
 
-    if (!response.data.values || response.data.values.length === 0) {
-      return res.json([]);
-    }
-
-    const tradeHistory = response.data.values.map(row => ({
-      date: row[1],
-      name: row[2],
-      tradeType: row[3],
-      pnl: row[4],
-    })).reverse();
-
-    res.json(tradeHistory);
+    const rows = response.data.values || [];
+    res.json({ data: rows });
   } catch (error) {
-    console.error('Server Error:', error);
-    res.status(500).json({ error: 'Failed to fetch trade history' });
+    console.error('Failed to fetch trade history:', error);
+    res.status(500).json({ error: 'Failed to load trade history' });
   }
 });
 

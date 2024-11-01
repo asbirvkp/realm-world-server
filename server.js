@@ -31,30 +31,28 @@ admin.initializeApp({
   credential: admin.credential.cert({
     projectId: process.env.FIREBASE_PROJECT_ID,
     clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-    privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
-  }),
+    privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n')
+  })
 });
 
 // Add authentication middleware
-const authenticateToken = (req, res, next) => {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
+const authenticateToken = async (req, res, next) => {
+  try {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
 
-  console.log('Auth Header:', authHeader);
-  console.log('Token:', token);
-
-  if (!token) {
-    return res.status(401).json({ error: 'No token provided' });
-  }
-
-  jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key', (err, user) => {
-    if (err) {
-      console.error('Token verification error:', err);
-      return res.status(403).json({ error: 'Invalid token' });
+    if (!token) {
+      return res.status(401).json({ error: 'No token provided' });
     }
-    req.user = user;
+
+    // Verify the Firebase token instead of JWT
+    const decodedToken = await admin.auth().verifyIdToken(token);
+    req.user = decodedToken;
     next();
-  });
+  } catch (error) {
+    console.error('Token verification error:', error);
+    return res.status(403).json({ error: 'Invalid token' });
+  }
 };
 
 // Performance data endpoint
@@ -208,28 +206,6 @@ app.use((req, res) => {
 // Add this route at the end before app.listen
 app.get('/test', (req, res) => {
   res.json({ message: 'Server is running and accessible!' });
-});
-
-// Add this new endpoint
-app.post('/api/auth/firebase', async (req, res) => {
-  try {
-    const { firebaseToken } = req.body;
-    
-    // Verify the Firebase token
-    const decodedToken = await admin.auth().verifyIdToken(firebaseToken);
-    
-    // Create your custom JWT token
-    const token = jwt.sign(
-      { uid: decodedToken.uid, email: decodedToken.email },
-      process.env.JWT_SECRET || 'your-secret-key',
-      { expiresIn: '24h' }
-    );
-    
-    res.json({ token });
-  } catch (error) {
-    console.error('Firebase auth error:', error);
-    res.status(401).json({ error: 'Authentication failed' });
-  }
 });
 
 // Start the server

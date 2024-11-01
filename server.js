@@ -130,21 +130,22 @@ app.get('/api/trade-history', authenticateToken, async (req, res) => {
   try {
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: 'Trade-History!A2:G',
+      range: 'Form_Responses1!B2:E',
     });
 
     if (!response.data.values) {
       return res.json([]);
     }
 
-    const trades = response.data.values.map(row => ({
-      date: row[1],
-      symbol: row[2],
-      tradeType: row[3],
-      quantity: parseFloat(row[4]),
-      price: parseFloat(row[5]),
-      pnl: parseFloat(row[6])
-    }));
+    const trades = response.data.values
+      .map(row => ({
+        date: row[0],
+        symbol: row[1],
+        direction: row[2] ? row[2].toUpperCase() : 'BUY',
+        pnl: parseFloat(row[3] || 0)
+      }))
+      .filter(trade => trade.date && trade.symbol && trade.direction)
+      .reverse();
 
     res.json(trades);
   } catch (error) {
@@ -158,23 +159,22 @@ app.get('/api/pnl-data', authenticateToken, async (req, res) => {
   try {
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: 'Trade-History!A2:G',
+      range: 'Form_Responses1!A2:E',
     });
 
     if (!response.data.values) {
-      console.log('No data found in spreadsheet');
       return res.json([]);
     }
 
     console.log('Raw spreadsheet data:', response.data.values);
 
     const pnlData = response.data.values
-      .filter(row => row[1] && row[6])
       .map(row => ({
         date: row[1],
-        pnl: parseFloat(row[6]) || 0
+        pnl: parseFloat(row[4] || 0)
       }))
-      .filter(item => !isNaN(item.pnl));
+      .filter(item => !isNaN(item.pnl) && item.date)
+      .reverse();
 
     console.log('Processed PNL data:', pnlData);
     res.json(pnlData);

@@ -162,18 +162,25 @@ app.get('/api/pnl-data', authenticateToken, async (req, res) => {
     });
 
     if (!response.data.values) {
+      console.log('No data found in spreadsheet');
       return res.json([]);
     }
 
-    const pnlData = response.data.values.map(row => ({
-      date: row[1],
-      pnl: row[6] ? parseFloat(row[6]) : 0
-    }));
+    console.log('Raw spreadsheet data:', response.data.values);
 
+    const pnlData = response.data.values
+      .filter(row => row[1] && row[6])
+      .map(row => ({
+        date: row[1],
+        pnl: parseFloat(row[6]) || 0
+      }))
+      .filter(item => !isNaN(item.pnl));
+
+    console.log('Processed PNL data:', pnlData);
     res.json(pnlData);
   } catch (error) {
     console.error('PNL Data Error:', error);
-    res.status(500).json({ error: 'Failed to fetch PNL data' });
+    res.status(500).json({ error: 'Failed to fetch PNL data', details: error.message });
   }
 });
 

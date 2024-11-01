@@ -20,11 +20,28 @@ app.use(express.json());
 
 // Initialize Google Sheets
 const auth = new google.auth.GoogleAuth({
-  credentials: JSON.parse(process.env.GOOGLE_CREDENTIALS || '{}'),
+  credentials: JSON.parse(process.env.GOOGLE_CREDENTIALS),
   scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly']
 });
 
 const sheets = google.sheets({ version: 'v4', auth });
+
+// Add error handling for sheets initialization
+const spreadsheetId = process.env.GOOGLE_SHEET_ID;
+
+// Add a test endpoint to verify Google Sheets connection
+app.get('/api/test-sheets', authenticateToken, async (req, res) => {
+  try {
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: 'Trade-History!A1:A1',
+    });
+    res.json({ success: true, data: response.data });
+  } catch (error) {
+    console.error('Google Sheets Test Error:', error);
+    res.status(500).json({ error: 'Failed to connect to Google Sheets' });
+  }
+});
 
 // Initialize Firebase Admin with proper private key handling
 const serviceAccount = {
@@ -80,53 +97,23 @@ app.get('/api/verify-token', authenticateToken, (req, res) => {
 // Performance data endpoint
 app.get('/api/performance-data', authenticateToken, async (req, res) => {
   try {
-    // Fetch both rows (H1:N1 and G2:M2)
     const [valueResponse, changeResponse] = await Promise.all([
       sheets.spreadsheets.values.get({
-        spreadsheetId: '1epn4JWYAz8o73-KkzbdaKCxxyUNh7hxQuQbyjmQH1Sw',
+        spreadsheetId,
         range: 'Trade-History!H1:N1',
       }),
       sheets.spreadsheets.values.get({
-        spreadsheetId: '1epn4JWYAz8o73-KkzbdaKCxxyUNh7hxQuQbyjmQH1Sw',
+        spreadsheetId,
         range: 'Trade-History!G2:M2',
       })
     ]);
-
-    const valueRows = valueResponse.data.values;
-    const changeRows = changeResponse.data.values;
-
-    if (!valueRows || !changeRows || valueRows.length === 0 || changeRows.length === 0) {
-      return res.status(404).json({ 
-        error: 'No data found in spreadsheet'
-      });
-    }
-
-    const formattedData = [
-      { 
-        title: 'This Week PNL', 
-        value: valueRows[0][0] || '0',  // H1
-        change: changeRows[0][0] || '0'  // G2
-      },
-      { 
-        title: 'Last Week PNL', 
-        value: valueRows[0][2] || '0',  // J1
-        change: changeRows[0][2] || '0'  // I2
-      },
-      { 
-        title: 'Monthly PNL', 
-        value: valueRows[0][4] || '0',  // L1
-        change: changeRows[0][4] || '0'  // K2
-      },
-      { 
-        title: 'Yearly PNL', 
-        value: valueRows[0][6] || '0',  // N1
-        change: changeRows[0][6] || '0'  // M2
-      }
-    ];
-
-    res.json(formattedData);
+    
+    res.json({
+      values: valueResponse.data.values[0],
+      changes: changeResponse.data.values[0]
+    });
   } catch (error) {
-    console.error('Server Error:', error);
+    console.error('Performance Data Error:', error);
     res.status(500).json({ error: 'Failed to fetch performance data' });
   }
 });

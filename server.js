@@ -100,26 +100,35 @@ app.get('/api/test-sheets', authenticateToken, async (req, res) => {
 // Performance data endpoint
 app.get('/api/performance-data', authenticateToken, async (req, res) => {
   try {
-    const response = await sheets.spreadsheets.values.get({
-      spreadsheetId,
-      range: 'Trade-History!H1:N1',
-    });
+    // Fetch specific cells individually
+    const responses = await Promise.all([
+      sheets.spreadsheets.values.get({
+        spreadsheetId,
+        range: 'Trade-History!H1', // This Week
+      }),
+      sheets.spreadsheets.values.get({
+        spreadsheetId,
+        range: 'Trade-History!J1', // Last Week
+      }),
+      sheets.spreadsheets.values.get({
+        spreadsheetId,
+        range: 'Trade-History!L1', // Monthly PNL
+      }),
+      sheets.spreadsheets.values.get({
+        spreadsheetId,
+        range: 'Trade-History!N1', // Yearly PNL
+      })
+    ]);
 
-    if (!response.data.values || !response.data.values[0]) {
-      return res.json({
-        thisWeek: '0',
-        lastWeek: '0',
-        monthly: '0',
-        yearly: '0'
-      });
-    }
+    const [thisWeek, lastWeek, monthly, yearly] = responses.map(response => 
+      response.data.values ? response.data.values[0][0] : '0'
+    );
 
-    const values = response.data.values[0];
     res.json({
-      thisWeek: values[0] || '0',
-      lastWeek: values[2] || '0',
-      monthly: values[3] || '0',
-      yearly: values[6] || '0'
+      thisWeek,
+      lastWeek,
+      monthly,
+      yearly
     });
 
   } catch (error) {

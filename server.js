@@ -55,6 +55,11 @@ const authenticateToken = async (req, res, next) => {
   }
 };
 
+// Add this route before other routes
+app.get('/api/verify-token', authenticateToken, (req, res) => {
+  res.json({ success: true, user: req.user });
+});
+
 // Performance data endpoint
 app.get('/api/performance-data', authenticateToken, async (req, res) => {
   try {

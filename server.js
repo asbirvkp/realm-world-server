@@ -9,18 +9,21 @@ const app = express();
 
 // CORS configuration
 const corsOptions = {
-  origin: [
-    'https://slateblue-hummingbird-423694.hostingersite.com',
-    'http://localhost:3000'
-  ],
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  origin: ['http://localhost:3000'],
   credentials: true,
-  exposedHeaders: ['Authorization']
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 };
 
 app.use(cors(corsOptions));
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Add before any routes
+app.use((req, res, next) => {
+  res.header('Content-Type', 'application/json');
+  next();
+});
 
 // Firebase Admin initialization
 const serviceAccount = {
@@ -89,6 +92,7 @@ app.get('/api/verify-token', authenticateToken, (req, res) => {
 // Performance data endpoint
 app.get('/api/performance-data', authenticateToken, async (req, res) => {
   try {
+    console.log('Fetching performance data...');
     const responses = await Promise.all([
       sheets.spreadsheets.values.get({
         spreadsheetId,
@@ -108,6 +112,8 @@ app.get('/api/performance-data', authenticateToken, async (req, res) => {
       })
     ]);
 
+    console.log('Raw responses:', responses);
+
     const getValue = (response) => {
       try {
         if (response.data.values && response.data.values[0] && response.data.values[0][0]) {
@@ -122,17 +128,19 @@ app.get('/api/performance-data', authenticateToken, async (req, res) => {
     };
 
     const [thisWeek, lastWeek, monthly, yearly] = responses.map(getValue);
-    console.log('Performance Data:', { thisWeek, lastWeek, monthly, yearly });
-
-    res.json({
+    
+    const result = {
       thisWeek,
       lastWeek,
       monthly,
       yearly
-    });
+    };
+    
+    console.log('Sending performance data:', result);
+    return res.json(result);
   } catch (error) {
     console.error('Performance Data Error:', error);
-    res.status(500).json({ error: 'Failed to fetch performance data' });
+    return res.status(500).json({ error: 'Failed to fetch performance data' });
   }
 });
 

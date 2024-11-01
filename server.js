@@ -130,7 +130,7 @@ app.get('/api/trade-history', authenticateToken, async (req, res) => {
   try {
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: 'Form_Responses1!A2:F',
+      range: 'Trade-History!B2:E',
     });
 
     if (!response.data.values) {
@@ -139,14 +139,15 @@ app.get('/api/trade-history', authenticateToken, async (req, res) => {
 
     const trades = response.data.values
       .map(row => ({
-        timestamp: row[1],
-        symbol: row[2],
-        direction: row[3],
-        pnl: parseFloat(row[4] || 0)
+        timestamp: row[0],
+        symbol: row[1],
+        direction: row[2],
+        pnl: parseFloat(row[3] || 0)
       }))
       .filter(trade => trade.timestamp && trade.symbol && trade.direction)
       .reverse();
 
+    console.log('Processed trades:', trades);
     res.json(trades);
   } catch (error) {
     console.error('Trade History Error:', error);
@@ -159,28 +160,26 @@ app.get('/api/pnl-data', authenticateToken, async (req, res) => {
   try {
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: 'Form_Responses1!A2:E',
+      range: 'Trade-History!B2:E',
     });
 
     if (!response.data.values) {
       return res.json([]);
     }
 
-    console.log('Raw spreadsheet data:', response.data.values);
-
     const pnlData = response.data.values
       .map(row => ({
-        date: row[1],
-        pnl: parseFloat(row[4] || 0)
+        date: row[0],
+        pnl: parseFloat(row[3] || 0)
       }))
-      .filter(item => !isNaN(item.pnl) && item.date)
+      .filter(item => item.date && !isNaN(item.pnl))
       .reverse();
 
     console.log('Processed PNL data:', pnlData);
     res.json(pnlData);
   } catch (error) {
     console.error('PNL Data Error:', error);
-    res.status(500).json({ error: 'Failed to fetch PNL data', details: error.message });
+    res.status(500).json({ error: 'Failed to fetch PNL data' });
   }
 });
 

@@ -8,23 +8,26 @@ require('dotenv').config();
 const app = express();
 
 // CORS configuration
-app.use(cors({
-  origin: process.env.ALLOWED_ORIGINS.split(','),
+const corsOptions = {
+  origin: [
+    'https://slateblue-hummingbird-423694.hostingersite.com',
+    'http://localhost:3000'
+  ],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true,
   exposedHeaders: ['Authorization']
-}));
+};
 
+app.use(cors(corsOptions));
 app.use(express.json());
 
-// Initialize Firebase Admin with proper private key handling
+// Firebase Admin initialization
 const serviceAccount = {
-  type: 'service_account',
+  type: "service_account",
   project_id: process.env.FIREBASE_PROJECT_ID,
   private_key_id: process.env.FIREBASE_PRIVATE_KEY_ID,
-  private_key: process.env.FIREBASE_PRIVATE_KEY ? 
-    process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n') : undefined,
+  private_key: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
   client_email: process.env.FIREBASE_CLIENT_EMAIL,
   client_id: process.env.FIREBASE_CLIENT_ID,
   auth_uri: "https://accounts.google.com/o/oauth2/auth",
@@ -54,7 +57,7 @@ const authenticateToken = async (req, res, next) => {
       return res.status(401).json({ error: 'No token provided' });
     }
 
-    // Verify the Firebase token instead of JWT
+    // Verify the Firebase token
     const decodedToken = await admin.auth().verifyIdToken(token);
     req.user = decodedToken;
     next();
@@ -83,24 +86,9 @@ app.get('/api/verify-token', authenticateToken, (req, res) => {
   res.json({ success: true, user: req.user });
 });
 
-// Google Sheets test endpoint
-app.get('/api/test-sheets', authenticateToken, async (req, res) => {
-  try {
-    const response = await sheets.spreadsheets.values.get({
-      spreadsheetId,
-      range: 'Trade-History!A1:A1',
-    });
-    res.json({ success: true, data: response.data });
-  } catch (error) {
-    console.error('Google Sheets Test Error:', error);
-    res.status(500).json({ error: 'Failed to connect to Google Sheets' });
-  }
-});
-
 // Performance data endpoint
 app.get('/api/performance-data', authenticateToken, async (req, res) => {
   try {
-    // Fetch specific cells individually
     const responses = await Promise.all([
       sheets.spreadsheets.values.get({
         spreadsheetId,
@@ -120,9 +108,17 @@ app.get('/api/performance-data', authenticateToken, async (req, res) => {
       })
     ]);
 
-    const [thisWeek, lastWeek, monthly, yearly] = responses.map(response => 
-      response.data.values ? response.data.values[0][0] : '0'
-    );
+    const getValue = (response) => {
+      if (response.data.values && response.data.values[0] && response.data.values[0][0]) {
+        const value = parseFloat(response.data.values[0][0]);
+        return isNaN(value) ? '0' : value.toString();
+      }
+      return '0';
+    };
+
+    const [thisWeek, lastWeek, monthly, yearly] = responses.map(getValue);
+
+    console.log('Performance Data:', { thisWeek, lastWeek, monthly, yearly });
 
     res.json({
       thisWeek,
@@ -195,24 +191,7 @@ app.get('/api/pnl-data', authenticateToken, async (req, res) => {
   }
 });
 
-// Error handling middleware
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({
-    error: 'Something went wrong!',
-    message: process.env.NODE_ENV === 'development' ? err.message : undefined
-  });
-});
-
-// Handle 404
-app.use((req, res) => {
-  res.status(404).json({ error: 'Route not found' });
-});
-
-// Start server
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
-
-module.exports = app;
